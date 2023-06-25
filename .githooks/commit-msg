@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Script to check for failing tests before committing
+# It also looks for the '[failing]' or '[tests-fail]' tags in the commit message.
+# If these tags are present, the tests are skipped. The script allows the user to force commit.
+
+# Get commit message from file
+message=$(cat "$1")
+
+# Check if the message contains '[failing]' or '[tests-fail]'
+if [[ $message =~ \[failing\] ]] || [[ $message =~ \[tests-fail\] ]]; then
+	echo "Acknowledged failing commit, skipping tests"
+	exit 0
+fi
+
+# Run the checks and store the exit status
+make check >/dev/null
+status=$?
+
+# Check the exit status of the 'make check' command
+if [ $status -ne 0 ]; then
+	echo "Check failed, aborting commit. Run 'make check' or 'make test' to see what failed."
+
+	# Interactive section: Ask user if they want to force commit
+	read -p "Do you want to force commit anyway? (y/n): " force_commit
+	case $force_commit in
+	[yY]*)
+		echo "Forcing commit..."
+		exit 0
+		;;
+	*)
+		echo "Aborting commit."
+		exit 1
+		;;
+	esac
+else
+	# If the checks passed, continue with the commit
+	exit 0
+fi
